@@ -1,65 +1,184 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabaseClient'
+
+export default function Dashboard() {
+
+  const [email, setEmail] = useState<string | null>(null)
+  const [title, setTitle] = useState('')
+  const [url, setUrl] = useState('')
+  const [bookmarks, setBookmarks] = useState<any[]>([])
+
+  // ✅ Fetch only logged-in user's bookmarks
+  const fetchBookmarks = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return
+
+    const { data, error } = await supabase
+      .from('bookmarks')
+      .select('*')
+      .eq('user_id', user.id)
+
+    if (error) {
+      console.log(error.message)
+    } else {
+      setBookmarks(data || [])
+    }
+  }
+
+  // ✅ Check logged user
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (user) {
+      setEmail(user.email!)
+    }
+  }
+
+  // ✅ Run on page load
+  useEffect(() => {
+    checkUser()
+    fetchBookmarks()
+  }, [])
+
+  // ✅ Add bookmark
+  const handleAdd = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      alert("Not logged in")
+      return
+    }
+
+    if (!title || !url) {
+      alert("Please fill all fields")
+      return
+    }
+
+    const { error } = await supabase.from('bookmarks').insert([
+      {
+        title: title,
+        url: url,
+        user_id: user.id
+      }
+    ])
+
+    if (error) {
+      console.log("Error:", error.message)
+    } else {
+      setTitle('')
+      setUrl('')
+      fetchBookmarks()
+    }
+  }
+
+  // ✅ Delete bookmark
+  const handleDelete = async (id: any) => {
+    const { error } = await supabase
+      .from('bookmarks')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.log(error.message)
+    } else {
+      fetchBookmarks()
+    }
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
+    <div style={{ padding: 40, maxWidth: 800, margin: 'auto' }}>
+      <h1>Dashboard Page</h1>
+      <p>Logged in as: <strong>{email}</strong></p>
+
+      <hr />
+
+      <h2>Add Bookmark</h2>
+
+      <input
+        type="text"
+        placeholder="Title"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        style={{
+          width: '100%',
+          padding: '10px',
+          marginBottom: '10px'
+        }}
+      />
+
+      <input
+        type="text"
+        placeholder="URL"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        style={{
+          width: '100%',
+          padding: '10px',
+          marginBottom: '10px'
+        }}
+      />
+
+      <button
+        onClick={handleAdd}
+        style={{
+          padding: '8px 16px',
+          backgroundColor: '#0070f3',
+          color: 'white',
+          border: 'none',
+          borderRadius: '5px'
+        }}
+      >
+        Add Bookmark
+      </button>
+
+      <hr style={{ margin: '30px 0' }} />
+
+      <h2>Your Bookmarks</h2>
+
+      {bookmarks.length === 0 && <p>No bookmarks yet.</p>}
+
+      {bookmarks.map((bookmark) => (
+        <div
+          key={bookmark.id}
+          style={{
+            border: '1px solid #ddd',
+            padding: '15px',
+            marginBottom: '15px',
+            borderRadius: '8px'
+          }}
+        >
+          <h3>{bookmark.title}</h3>
+
           <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            href={bookmark.url}
             target="_blank"
             rel="noopener noreferrer"
+            style={{ color: '#0070f3' }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
+            {bookmark.url}
           </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+          <br />
+
+          <button
+            onClick={() => handleDelete(bookmark.id)}
+            style={{
+              marginTop: '10px',
+              padding: '6px 12px',
+              backgroundColor: 'red',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px'
+            }}
           >
-            Documentation
-          </a>
+            Delete
+          </button>
         </div>
-      </main>
+      ))}
+
     </div>
-  );
+  )
 }
