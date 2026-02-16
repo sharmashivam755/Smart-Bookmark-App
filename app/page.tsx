@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from "@/lib/supabaseClient";
 
 type Bookmark = {
   id: string;
@@ -9,13 +9,12 @@ type Bookmark = {
   url: string;
 };
 
-export default function Dashboard() {
+export default function DashboardPage() { // name is optional, must be default export
   const [email, setEmail] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
 
-  // ✅ Fetch logged-in user's bookmarks
   const fetchBookmarks = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -32,24 +31,19 @@ export default function Dashboard() {
     }
   };
 
-  // ✅ Check logged-in user
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user?.email) setEmail(user.email);
   };
 
-  // ✅ Run on page load
   useEffect(() => {
-    // Wrap async calls in a function inside useEffect
     const init = async () => {
       await checkUser();
       await fetchBookmarks();
     };
-
     init();
   }, []);
 
-  // ✅ Add a bookmark
   const handleAdd = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return alert("Not logged in");
@@ -68,14 +62,10 @@ export default function Dashboard() {
     }
   };
 
-  // ✅ Delete a bookmark
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("bookmarks").delete().eq("id", id);
-    if (error) {
-      console.log("Delete Error:", error.message);
-    } else {
-      fetchBookmarks();
-    }
+    if (error) console.log("Delete Error:", error.message);
+    else fetchBookmarks();
   };
 
   return (
