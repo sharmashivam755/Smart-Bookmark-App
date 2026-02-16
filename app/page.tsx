@@ -1,7 +1,7 @@
-"use client";
+'use client'
 
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabaseClient"; // 👈 relative path safer for Vercel
+import { supabase } from '@/lib/supabaseClient';
 
 type Bookmark = {
   id: string;
@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [url, setUrl] = useState("");
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
 
+  // ✅ Fetch logged-in user's bookmarks
   const fetchBookmarks = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -24,38 +25,57 @@ export default function Dashboard() {
       .select("*")
       .eq("user_id", user.id);
 
-    if (!error && data) setBookmarks(data);
+    if (error) {
+      console.log("Fetch Error:", error.message);
+    } else {
+      setBookmarks(data || []);
+    }
   };
 
+  // ✅ Check logged-in user
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user?.email) setEmail(user.email);
   };
 
+  // ✅ Run on page load
   useEffect(() => {
-    checkUser();
-    fetchBookmarks();
+    // Wrap async calls in a function inside useEffect
+    const init = async () => {
+      await checkUser();
+      await fetchBookmarks();
+    };
+
+    init();
   }, []);
 
+  // ✅ Add a bookmark
   const handleAdd = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return alert("Not logged in");
-    if (!title || !url) return alert("Fill all fields");
+    if (!title || !url) return alert("Please fill all fields");
 
     const { error } = await supabase.from("bookmarks").insert([
       { title, url, user_id: user.id }
     ]);
 
-    if (!error) {
+    if (error) {
+      console.log("Insert Error:", error.message);
+    } else {
       setTitle("");
       setUrl("");
       fetchBookmarks();
     }
   };
 
+  // ✅ Delete a bookmark
   const handleDelete = async (id: string) => {
-    await supabase.from("bookmarks").delete().eq("id", id);
-    fetchBookmarks();
+    const { error } = await supabase.from("bookmarks").delete().eq("id", id);
+    if (error) {
+      console.log("Delete Error:", error.message);
+    } else {
+      fetchBookmarks();
+    }
   };
 
   return (
@@ -63,9 +83,7 @@ export default function Dashboard() {
       <h1>Dashboard</h1>
       <p>Logged in as: <strong>{email ?? "Loading..."}</strong></p>
 
-      <hr />
-
-      <h2>Add Bookmark</h2>
+      <hr style={{ margin: "20px 0" }} />
 
       <input
         type="text"
@@ -99,7 +117,9 @@ export default function Dashboard() {
       {bookmarks.map((b) => (
         <div key={b.id} style={{ border: "1px solid #ddd", padding: 15, marginBottom: 15, borderRadius: 8 }}>
           <h3>{b.title}</h3>
-          <a href={b.url} target="_blank" rel="noopener noreferrer">{b.url}</a>
+          <a href={b.url} target="_blank" rel="noopener noreferrer" style={{ color: "#0070f3" }}>
+            {b.url}
+          </a>
           <br />
           <button
             onClick={() => handleDelete(b.id)}
